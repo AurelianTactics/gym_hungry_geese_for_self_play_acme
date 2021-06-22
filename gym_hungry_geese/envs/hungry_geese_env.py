@@ -8,12 +8,24 @@ import tensorflow as tf
 action_list_all = ["NORTH", "EAST", "SOUTH", "WEST"]
 action_dict_opposite_all = {"NORTH": "SOUTH", "EAST": "WEST", "SOUTH": "NORTH", "WEST": "EAST", "NONE": "NONE"}
 # some global variables
+# agent 1
 fp_agent_1 = '/home/jim/projects/acme_test/hg_agent_1/network'
 model_agent_1 = tf.saved_model.load(fp_agent_1)
 lstm_state_agent_1 = model_agent_1.initial_state(1)
 obs_list_agent_1 = []
 last_action_agent_1 = 'NONE'
-
+# agent 2
+fp_agent_2 = '/home/jim/projects/acme_test/hg_agent_2/network'
+model_agent_2 = tf.saved_model.load(fp_agent_2)
+lstm_state_agent_2 = model_agent_2.initial_state(1)
+obs_list_agent_2 = []
+last_action_agent_2 = 'NONE'
+# agent 3
+fp_agent_3 = '/home/jim/projects/acme_test/hg_agent_3/network'
+model_agent_3 = tf.saved_model.load(fp_agent_3)
+lstm_state_agent_3 = model_agent_3.initial_state(1)
+obs_list_agent_3 = []
+last_action_agent_3 = 'NONE'
 
 def agent_1(obs):
     # assert test_obs['index'] == 1
@@ -42,6 +54,66 @@ def agent_1(obs):
     # end_time = time.time()
     # print("total time was :", end_time-start_time)
     # print("actions are ", action_list_all[action], last_action_agent_1 )
+    return action_list_all[action]
+
+
+def agent_2(obs):
+    # assert test_obs['index'] == 2
+    # start_time = time.time()
+    global lstm_state_agent_2
+    global obs_list_agent_2
+    global last_action_agent_2
+    if obs['step'] == 0:
+        lstm_state_agent_2 = model_agent_2.initial_state(1)
+        last_action_agent_2 = 'NONE'
+        obs_list_agent_2 = []
+
+    obs_list_agent_2.append(obs)
+    x, obs_list_agent_2 = process_obs_2D(obs_list_agent_2)
+    # print(x)
+    # wtf is the torch.no_grad() or eval() equivalent for a custom model?
+    xt = tf.reshape(tf.convert_to_tensor(x), [1, -1])
+    action_values, lstm_state_agent_2 = model_agent_2(xt, lstm_state_agent_2)
+    action_values = action_values.numpy()
+    action = np.argmax(action_values)
+    # can add code to randomly decide between same actions
+    action_string = action_list_all[action]
+    if action_dict_opposite_all[last_action_agent_2] == action_string:
+        action = (action + 1) % 4
+    last_action_agent_2 = action_list_all[action]
+    # end_time = time.time()
+    # print("total time was :", end_time-start_time)
+    # print("actions are ", action_list_all[action], last_action_agent_2 )
+    return action_list_all[action]
+
+
+def agent_3(obs):
+    # assert test_obs['index'] == 3
+    # start_time = time.time()
+    global lstm_state_agent_3
+    global obs_list_agent_3
+    global last_action_agent_3
+    if obs['step'] == 0:
+        lstm_state_agent_3 = model_agent_3.initial_state(1)
+        last_action_agent_3 = 'NONE'
+        obs_list_agent_3 = []
+
+    obs_list_agent_3.append(obs)
+    x, obs_list_agent_3 = process_obs_2D(obs_list_agent_3)
+    # print(x)
+    # wtf is the torch.no_grad() or eval() equivalent for a custom model?
+    xt = tf.reshape(tf.convert_to_tensor(x), [1, -1])
+    action_values, lstm_state_agent_3 = model_agent_3(xt, lstm_state_agent_3)
+    action_values = action_values.numpy()
+    action = np.argmax(action_values)
+    # can add code to randomly decide between same actions
+    action_string = action_list_all[action]
+    if action_dict_opposite_all[last_action_agent_3] == action_string:
+        action = (action + 1) % 4
+    last_action_agent_3 = action_list_all[action]
+    # end_time = time.time()
+    # print("total time was :", end_time-start_time)
+    # print("actions are ", action_list_all[action], last_action_agent_3 )
     return action_list_all[action]
 
 
@@ -244,7 +316,7 @@ def process_obs_2D(obs_list, center_head=True, rows=7, columns=11, hunger_rate=4
 class HungryGeeseEnv(gym.Env):
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self, opponents=[agent_1, 'greedy', 'greedy'], center_head=True, debug=False, episode_steps=200,
+    def __init__(self, opponents=[agent_1, agent_2, agent_3], center_head=True, debug=False, episode_steps=200,
                  hunger_rate=40):
         super(HungryGeeseEnv, self).__init__()
         # self.num_envs = 1
