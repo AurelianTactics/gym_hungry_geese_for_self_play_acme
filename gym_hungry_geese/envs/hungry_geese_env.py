@@ -3,6 +3,7 @@ import gym
 from gym import spaces
 import numpy as np
 import tensorflow as tf
+import os
 
 # loading saved agent code, this needs to be debugged
 action_list_all = ["NORTH", "EAST", "SOUTH", "WEST"]
@@ -14,31 +15,43 @@ model_agent_1 = tf.saved_model.load(fp_agent_1)
 lstm_state_agent_1 = model_agent_1.initial_state(1)
 obs_list_agent_1 = []
 last_action_agent_1 = 'NONE'
+model_load_time_agent_1 = int(os.stat(fp_agent_1).st_mtime)
 # agent 2
 fp_agent_2 = '/home/jim/projects/acme_test/hg_agent_2/network'
 model_agent_2 = tf.saved_model.load(fp_agent_2)
 lstm_state_agent_2 = model_agent_2.initial_state(1)
 obs_list_agent_2 = []
 last_action_agent_2 = 'NONE'
+model_load_time_agent_2 = int(os.stat(fp_agent_2).st_mtime)
 # agent 3
 fp_agent_3 = '/home/jim/projects/acme_test/hg_agent_3/network'
 model_agent_3 = tf.saved_model.load(fp_agent_3)
 lstm_state_agent_3 = model_agent_3.initial_state(1)
 obs_list_agent_3 = []
 last_action_agent_3 = 'NONE'
+model_load_time_agent_3 = int(os.stat(fp_agent_3).st_mtime)
 
 def agent_1(obs):
-    # assert test_obs['index'] == 1
     # start_time = time.time()
     global lstm_state_agent_1
     global obs_list_agent_1
     global last_action_agent_1
+    global model_agent_1
+    global model_load_time_agent_1
+
+    # check for new model to load
+    model_time = int(os.stat(fp_agent_1).st_mtime)
+    if model_time > model_load_time_agent_1:
+        model_agent_1 = tf.saved_model.load(fp_agent_1)
+        model_load_time_agent_1 = int(os.stat(fp_agent_1).st_mtime)
+
     if obs['step'] == 0:
         lstm_state_agent_1 = model_agent_1.initial_state(1)
         last_action_agent_1 = 'NONE'
         obs_list_agent_1 = []
 
     obs_list_agent_1.append(obs)
+    #x, obs_list_agent_1 = process_obs_2D(obs_list_agent_1, agent_index=1)
     x, obs_list_agent_1 = process_obs_2D(obs_list_agent_1)
     # print(x)
     # wtf is the torch.no_grad() or eval() equivalent for a custom model?
@@ -54,21 +67,31 @@ def agent_1(obs):
     # end_time = time.time()
     # print("total time was :", end_time-start_time)
     # print("actions are ", action_list_all[action], last_action_agent_1 )
+    # return action_list_all[0]
     return action_list_all[action]
 
 
 def agent_2(obs):
-    # assert test_obs['index'] == 2
     # start_time = time.time()
     global lstm_state_agent_2
     global obs_list_agent_2
     global last_action_agent_2
+    global model_agent_2
+    global model_load_time_agent_2
+
+    # check for new model to load
+    model_time = int(os.stat(fp_agent_2).st_mtime)
+    if model_time > model_load_time_agent_2:
+        model_agent_2 = tf.saved_model.load(fp_agent_2)
+        model_load_time_agent_2 = int(os.stat(fp_agent_2).st_mtime)
+
     if obs['step'] == 0:
         lstm_state_agent_2 = model_agent_2.initial_state(1)
         last_action_agent_2 = 'NONE'
         obs_list_agent_2 = []
 
     obs_list_agent_2.append(obs)
+    #x, obs_list_agent_2 = process_obs_2D(obs_list_agent_2, agent_index=2)
     x, obs_list_agent_2 = process_obs_2D(obs_list_agent_2)
     # print(x)
     # wtf is the torch.no_grad() or eval() equivalent for a custom model?
@@ -84,21 +107,31 @@ def agent_2(obs):
     # end_time = time.time()
     # print("total time was :", end_time-start_time)
     # print("actions are ", action_list_all[action], last_action_agent_2 )
+    # return action_list_all[0]
     return action_list_all[action]
 
 
 def agent_3(obs):
-    # assert test_obs['index'] == 3
     # start_time = time.time()
     global lstm_state_agent_3
     global obs_list_agent_3
     global last_action_agent_3
+    global model_agent_3
+    global model_load_time_agent_3
+
+    # check for new model to load
+    model_time = int(os.stat(fp_agent_3).st_mtime)
+    if model_time > model_load_time_agent_3:
+        model_agent_3 = tf.saved_model.load(fp_agent_3)
+        model_load_time_agent_3 = int(os.stat(fp_agent_3).st_mtime)
+
     if obs['step'] == 0:
         lstm_state_agent_3 = model_agent_3.initial_state(1)
         last_action_agent_3 = 'NONE'
         obs_list_agent_3 = []
 
     obs_list_agent_3.append(obs)
+    #x, obs_list_agent_3 = process_obs_2D(obs_list_agent_3, agent_index=3)
     x, obs_list_agent_3 = process_obs_2D(obs_list_agent_3)
     # print(x)
     # wtf is the torch.no_grad() or eval() equivalent for a custom model?
@@ -114,9 +147,8 @@ def agent_3(obs):
     # end_time = time.time()
     # print("total time was :", end_time-start_time)
     # print("actions are ", action_list_all[action], last_action_agent_3 )
+    # return action_list_all[0]
     return action_list_all[action]
-
-
 
 
 # single frame observation
@@ -222,10 +254,9 @@ def process_obs(obs_list, rows=7, columns=11, hunger_rate=40, center_head=True):
 
 
 # turn kaggle env obs into 2D grid with everything represented
-def process_obs_2D(obs_list, center_head=True, rows=7, columns=11, hunger_rate=40):
+def process_obs_2D(obs_list, center_head=True, rows=7, columns=11, hunger_rate=40, agent_index=None):
     # https://www.kaggle.com/victordelafuente/dqn-goose-with-stable-baselines3-pytorch
     # https://www.kaggle.com/yuricat/smart-geese-trained-by-reinforcement-learning
-
     # single frame observation
     # FOOD_OBS = 1.
     # FOOD_STEP = .001  # food value varies based on the hunger rate
@@ -240,7 +271,6 @@ def process_obs_2D(obs_list, center_head=True, rows=7, columns=11, hunger_rate=4
                   2: {'head': -1., 'mid': -0.9, 'tail': -.8, 'last_head': -0.95}
                   }
 
-
     # only need last two observations
     if len(obs_list) > 2:
         obs_list = obs_list[1:]
@@ -250,18 +280,21 @@ def process_obs_2D(obs_list, center_head=True, rows=7, columns=11, hunger_rate=4
     # print("in process obs ", obs_list, obs_len)
 
     geese_obs = current_obs['geese']
-    agent_index = current_obs['index']
+    # some geese supply their own agent index to help with centering
+    if agent_index is None:
+        agent_index = current_obs['index']
     # get agent offset
     if center_head and len(geese_obs[agent_index]) > 0:
         row_offset, column_offset = get_offsets(obs_list[-1]['geese'][agent_index][0], rows, columns)
         # row_last_offset, column_last_offset = get_offsets(obs_list[0]['geese'][agent_index][0], rows, columns)
     else:
         row_offset, column_offset, row_last_offset, column_last_offset = 0, 0, 0, 0
-    # place snake body parts
+    # place goose body parts
     for i in range(0, len(geese_obs)):
         if i == agent_index:
             geese_key = 'agent'
         else:
+            # dict keys are only 0, 1, and 2 so might have to subtract to match up
             if i > agent_index:
                 geese_key = i - 1
             else:
@@ -304,8 +337,9 @@ def process_obs_2D(obs_list, center_head=True, rows=7, columns=11, hunger_rate=4
         pos_index = center_head_offset(i, row_offset, column_offset, rows, columns, center_head)
         new_obs[pos_index] = food_value
 
-    # print("debugging obs", obs_list[-1])
-    # print(new_obs.reshape(rows, columns))
+    if agent_index != 0:
+        print("debugging obs for agent ", agent_index, obs_list[-1])
+        print(new_obs.reshape(rows, columns))
 
     # print("existings obs list", obs_list)
     # reshape new obs to grid
